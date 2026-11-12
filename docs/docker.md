@@ -31,6 +31,39 @@ is included.
 > the healthcheck don't target. Compose pins it to 3000 for that
 > reason.
 
+## Deploying on Easypanel
+
+1. Create an **App** service and point its **Source** at this repository.
+   Keep the build path at `/` — Easypanel auto-detects the `Dockerfile`
+   in the repo root.
+2. Open **Environment** and paste every variable you need from
+   `.env.local.example` (at minimum the five required ones, plus
+   `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_APP_LOCALE`).
+3. Set the service's **target port** to `3000` (the port the image
+   exposes). Do not override `PORT` unless you also change the target
+   port; the built-in health check follows `PORT`.
+4. Add your domain under **Domains** and enable HTTPS. Set
+   `NEXT_PUBLIC_SITE_URL` to that public URL.
+5. Deploy. The first build fails fast if `NEXT_PUBLIC_SUPABASE_URL` or
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY` is missing, with a message telling
+   you to set it in the Environment tab.
+
+Easypanel forwards project/service environment variables to the Docker
+build as build args, so the `NEXT_PUBLIC_*` values are baked into the
+client bundle automatically. Keep them in the Environment tab rather
+than only in a local `.env.local`. Changing any `NEXT_PUBLIC_*` value
+requires a **redeploy/rebuild**, not just a restart — the old value is
+compiled into the bundle.
+
+The image includes a `HEALTHCHECK` that probes `/login` every 30s, so
+Easypanel can report the container as healthy without an extra endpoint.
+If the build is OOM-killed, raise the service's build memory: the
+Turbopack production build is the memory-heavy step, not the runtime.
+
+Apply the `supabase/` migrations before the first deploy, and point an
+external scheduler at the cron endpoints described below if you use
+automations or flows.
+
 ## Build-time vs runtime variables
 
 - `NEXT_PUBLIC_*` variables are **inlined into the client bundle at
